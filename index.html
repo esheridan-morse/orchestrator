@@ -19,6 +19,117 @@
   title="Orchestrator"
   style="position:fixed;inset:0;width:100%;height:100%;border:0;margin:0;"
   src="app.html"></iframe>
+
+<!-- ===== ANALYTICS · PostHog =====================================================
+     This lives in index.html ON PURPOSE, not in app.html.
+
+     app.html is a generated ~13 MB bundle that gets replaced wholesale on every
+     deploy, so anything instrumented inside it dies at the next rebuild. index.html
+     and app.html are same-origin, so this file instruments the iframe from outside
+     and app.html never has to change. The deploy rule is unaffected: to ship a new
+     build, still overwrite app.html ONLY.
+
+     This is a NEW <script> block. The gate's own <script> blocks are untouched, and
+     nothing here reads the access code — unlock is detected from the gate's own
+     class change, not from the input field. Autocapture, session replay and surveys
+     are all off; only the named events below are ever sent.
+
+     Events: $pageview · gate_unlocked · gate_failed · app_ready · app_load_error
+             step_opened · mockup_opened · phase_option_changed
+================================================================================== -->
+<script>
+!function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}p||((p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",p.onerror=function(){p=null},(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r));var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="an ln init xn Cn Br kn In capture Fn nn calculateEventProperties On register register_once register_for_session unregister unregister_for_session Ln getFeatureFlag getFeatureFlagPayload getFeatureFlagResult getAllFeatureFlags isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync Dn identify setPersonProperties unsetPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset shutdown setIdentity clearIdentity get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException addExceptionStep captureLog startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty An Rn createPersonProfile setInternalOrTestUser $n yn jn opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing Tn debug Ur Rt getPageViewId captureTraceFeedback captureTraceMetric pn".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+
+(function () {
+  // Bump when you ship a new app.html, so events say which build was viewed.
+  var ORC_BUILD = 'V5';
+
+  posthog.init('phc_sLTNGMWhiCE7KgjETcV3TT2aHYvqGaPUXtCgBAzuVc3f', {
+    api_host: 'https://us.i.posthog.com',
+    defaults: '2026-05-30',
+    person_profiles: 'identified_only',
+    autocapture: false,            // we send named events instead
+    capture_pageview: true,
+    disable_session_recording: true,
+    disable_surveys: true
+  });
+  posthog.register({ orc_build: ORC_BUILD });
+
+  var t0 = Date.now();
+  function cap(name, props) { try { posthog.capture(name, props || {}); } catch (e) {} }
+
+  function phaseFor(id) {
+    var n = parseInt(String(id).replace(/^o/, ''), 10);
+    if (!isFinite(n)) return '';
+    if (n <= 6) return 'A';
+    if (n <= 8) return 'B';
+    if (n <= 13) return 'C';
+    return 'D';
+  }
+
+  // ---- Gate. Success is read from the gate's own class change; the access code
+  //      is never read, and the password field is never touched. ----
+  var root = document.documentElement;
+  new MutationObserver(function (m, obs) {
+    if (!root.classList.contains('__orc_locked')) { cap('gate_unlocked'); obs.disconnect(); }
+  }).observe(root, { attributes: true, attributeFilter: ['class'] });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var err = document.getElementById('__orc_err');
+    if (!err) return;
+    new MutationObserver(function () {
+      if ((err.textContent || '').trim()) cap('gate_failed');
+    }).observe(err, { childList: true, characterData: true, subtree: true });
+  });
+
+  // ---- The app, instrumented from outside the iframe. ----
+  var frame = document.querySelector('iframe[src="app.html"]');
+  var lastOpt = null, readyFired = false, errFired = false;
+
+  // The Phase D toggle has no data-* hook, but the two architectures render
+  // different step sets, so the presence of step o15 identifies Option 2.
+  function currentOpt(d) { return d.querySelector('[data-step="o15"]') ? 'option-2' : 'option-1'; }
+
+  function onFrameClick(ev) {
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    var stepEl = t.closest('[data-step]');
+    if (stepEl) {
+      var id = stepEl.getAttribute('data-step');
+      if (id) cap('step_opened', { step: id, phase: phaseFor(id) });
+      return;
+    }
+    var lbEl = t.closest('[data-lb]');
+    if (lbEl) cap('mockup_opened', { mockup: lbEl.getAttribute('data-lb') || '' });
+  }
+
+  function wireFrame() {
+    var d;
+    try { d = frame && frame.contentDocument; } catch (e) { return; }   // guard: non-same-origin
+    if (!d || !d.body) return;
+    if (!d.__orcPH) { d.__orcPH = 1; d.addEventListener('click', onFrameClick, true); }
+    if (!readyFired && d.querySelector('[data-step]')) {
+      readyFired = true;
+      lastOpt = currentOpt(d);
+      cap('app_ready', { ms: Date.now() - t0 });
+    } else if (readyFired && d.querySelector('[data-step]')) {
+      // Polled, not click-driven: the toggle re-renders asynchronously and a
+      // click-triggered check races it, dropping the change for good.
+      var o = currentOpt(d);
+      if (o !== lastOpt) cap('phase_option_changed', { option: o });
+      lastOpt = o;
+    }
+    if (!errFired && d.getElementById('__bundler_err')) { errFired = true; cap('app_load_error'); }
+  }
+
+  if (frame) {
+    frame.addEventListener('load', wireFrame);
+    wireFrame();
+    // The bundler can swap the frame document, so re-wiring stays live. Idempotent.
+    setInterval(wireFrame, 800);
+  }
+})();
+</script>
 <!-- ===== END CONTENT ===== -->
 <script>
 (function(){
