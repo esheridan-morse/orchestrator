@@ -36,6 +36,9 @@
 
      Events: $pageview · gate_unlocked · gate_failed · app_ready · app_load_error
              step_opened · mockup_opened · phase_option_changed
+     Every event carries orc_build, plus customer — set from the per-account access
+     code entered at the gate, or from a tagged link (?c=acme-health) as a fallback.
+     gate_unlocked also carries via = code | shared.
 ================================================================================== -->
 <script>
 !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}p||((p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",p.onerror=function(){p=null},(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r));var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="an ln init xn Cn Br kn In capture Fn nn calculateEventProperties On register register_once register_for_session unregister unregister_for_session Ln getFeatureFlag getFeatureFlagPayload getFeatureFlagResult getAllFeatureFlags isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync Dn identify setPersonProperties unsetPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset shutdown setIdentity clearIdentity get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException addExceptionStep captureLog startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty An Rn createPersonProfile setInternalOrTestUser $n yn jn opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing Tn debug Ur Rt getPageViewId captureTraceFeedback captureTraceMetric pn".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
@@ -49,11 +52,33 @@
     defaults: '2026-05-30',
     person_profiles: 'identified_only',
     autocapture: false,            // we send named events instead
-    capture_pageview: true,
+    capture_pageview: false,       // fired manually below, once the customer tag is set
+    capture_pageleave: true,       // defaults to following capture_pageview, so set it explicitly
     disable_session_recording: true,
     disable_surveys: true
   });
   posthog.register({ orc_build: ORC_BUILD });
+
+  // ---- Visitor tagging ----
+  // Hand each customer their own link:  https://orc.speakbenefits.com/?c=acme-health
+  // The tag is stored as a super property, so it rides on EVERY later event and
+  // sticks for that browser even if they come back without the parameter.
+  // Use account/company slugs only — never an individual's name or email.
+  function customerTag() {
+    try {
+      var v = new URLSearchParams(location.search).get('c');
+      if (!v) return null;
+      // Collapse anything not alphanumeric to a single dash, so "Acme Health Inc"
+      // and "acme-health-inc" land on the same tag rather than two near-identical ones.
+      v = v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
+      return v || null;
+    } catch (e) { return null; }
+  }
+  var tag = customerTag();
+  // Only register when the parameter is present, so a later bare visit doesn't
+  // wipe a tag this browser already carries.
+  if (tag) posthog.register({ customer: tag });
+  posthog.capture('$pageview');
 
   var t0 = Date.now();
   function cap(name, props) { try { posthog.capture(name, props || {}); } catch (e) {} }
@@ -67,11 +92,25 @@
     return 'D';
   }
 
-  // ---- Gate. Success is read from the gate's own class change; the access code
-  //      is never read, and the password field is never touched. ----
+  // ---- Gate. Success is read from the gate's own class change. The access code
+  //      itself is NEVER read or sent — the gate publishes only the account LABEL
+  //      it matched, and failed attempts are counted without capturing what was
+  //      typed (a mistyped code could be anything). ----
   var root = document.documentElement;
   new MutationObserver(function (m, obs) {
-    if (!root.classList.contains('__orc_locked')) { cap('gate_unlocked'); obs.disconnect(); }
+    if (root.classList.contains('__orc_locked')) return;
+    obs.disconnect();
+    var who = window.__orc_customer || null;
+    if (who && who !== 'shared') {
+      posthog.register({ customer: who });          // a named account beats a URL tag
+    } else if (who === 'shared') {
+      // The legacy shared code must not overwrite a specific tag this browser
+      // already carries, or a tagged visitor would collapse into "shared".
+      var existing = null;
+      try { existing = posthog.persistence.properties().customer; } catch (e) {}
+      if (!existing) posthog.register({ customer: 'shared' });
+    }
+    cap('gate_unlocked', { via: who === 'shared' ? 'shared' : (who ? 'code' : 'unknown') });
   }).observe(root, { attributes: true, attributeFilter: ['class'] });
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -142,10 +181,32 @@
   // that date. A timer that locks out the audience without telling the owner
   // is worse than no timer. If this page needs a hard end date, delete the
   // repo or unpublish Pages — both are visible actions.
-  var PW="IDP123";
+  // ── ACCESS CODES ─────────────────────────────────────────────────────────
+  // One line per account.  code : "Account label shown in PostHog"
+  //
+  // The code deliberately does NOT name the customer, so page source reveals a
+  // list of arbitrary words rather than your prospect list. The label is what
+  // you see in analytics and never has to match the code.
+  //
+  // Codes are matched case- and punctuation-insensitively, so "Lakeshore",
+  // "LAKESHORE" and "lake-shore" all work. Keep keys lowercase a-z0-9 only.
+  //
+  // Unused words you can draw from: meridian, ironwood, calloway, harborview,
+  // stonebridge, fairhaven, windrow, kestrel, alderman, brightwater.
+  var CODES={
+    "idp123":"shared"           // legacy shared code — still live; retire once
+                                // "shared" traffic drops off in PostHog
+    // ,"lakeshore":"Acme Health"
+    // ,"meridian":"Blue Ridge Health Plan"
+  };
+  function normCode(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
   function unlock(){
-    var v=document.getElementById('__orc_pw').value;
-    if(v===PW){
+    var v=normCode(document.getElementById('__orc_pw').value);
+    // hasOwnProperty guard: without it, typing "constructor" or "toString"
+    // would hit Object.prototype and unlock the page.
+    var who=Object.prototype.hasOwnProperty.call(CODES,v)?CODES[v]:null;
+    if(who){
+      window.__orc_customer=who;   // read by the analytics block above
       var g=document.getElementById('__orc_gate'); if(g) g.remove();
       document.documentElement.classList.remove('__orc_locked');
       document.body.classList.remove('__orc_locked');
