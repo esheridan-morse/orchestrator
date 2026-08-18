@@ -191,13 +191,28 @@
   // Codes are matched case- and punctuation-insensitively, so "Lakeshore",
   // "LAKESHORE" and "lake-shore" all work. Keep keys lowercase a-z0-9 only.
   //
-  // Unused words you can draw from: meridian, ironwood, calloway, harborview,
-  // stonebridge, fairhaven, windrow, kestrel, alderman, brightwater.
   var CODES={
-    "idp123":"shared"           // legacy shared code — still live; retire once
+    "idp123":"shared",          // legacy shared code — still live; retire once
                                 // "shared" traffic drops off in PostHog
-    // ,"lakeshore":"Acme Health"
-    // ,"meridian":"Blue Ridge Health Plan"
+
+    // ── Assigned accounts ──────────────────────────────────────────────────
+    // Left = the code you give the customer. Right = the label you see in
+    // PostHog. Replace "unassigned" labels with the real account name.
+    //
+    // ⚠ Rename a label BEFORE the code is in wide use. Changing it later splits
+    //   that account's history — old events keep the old label, new ones get the
+    //   new one, and PostHog will show them as two separate accounts.
+    "meridian":"meridian",      // unassigned
+    "ironwood":"ironwood",      // unassigned
+    "calloway":"calloway",      // unassigned
+    "harborview":"harborview",    // unassigned
+    "stonebridge":"stonebridge",   // unassigned
+    "fairhaven":"fairhaven",     // unassigned
+    "windrow":"windrow",       // unassigned
+    "kestrel":"kestrel",       // unassigned
+    "alderman":"alderman",      // unassigned
+    "brightwater":"brightwater",   // unassigned
+    // Spare words if you need more: lakeshore, cedarpoint, marbury, oakhurst.
   };
   function normCode(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
   function unlock(){
