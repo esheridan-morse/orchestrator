@@ -1,0 +1,256 @@
+<div id="__orc_gate" style="position:fixed;inset:0;z-index:2147483647;background:#0f1115;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;">
+  <div style="background:#1b1e26;padding:32px 28px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);width:340px;text-align:center;">
+    <div style="color:#fff;font-size:16px;font-weight:600;margin-bottom:4px;">Protected Preview</div>
+    <div style="color:#9aa0ab;font-size:13px;margin-bottom:16px;">Orchestrator &mdash; preview only.</div>
+    <input id="__orc_pw" type="password" placeholder="Access code" autofocus
+      style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #333a47;border-radius:8px;background:#0f1115;color:#fff;font-size:14px;outline:none;margin-bottom:10px;"/>
+    <button id="__orc_btn"
+      style="width:100%;padding:10px 12px;border:0;border-radius:8px;background:#4f7cff;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Unlock</button>
+    <div id="__orc_err" style="color:#ff6b6b;font-size:12px;height:16px;margin-top:8px;"></div>
+    <div style="color:#4b5563;font-size:10px;margin-top:14px;line-height:1.5;">Not a security control. Convenience gate on a preview page.</div>
+  </div>
+</div>
+<style>html.__orc_locked,body.__orc_locked{overflow:hidden!important;}</style>
+<script>document.documentElement.classList.add('__orc_locked');document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('__orc_locked');});</script>
+<!-- ===== ORCHESTRATOR CONTENT (editable middle) ===== -->
+<!-- The page lives in app.html and runs inside this iframe, so replacing it cannot touch the gate. -->
+<!-- To ship a new version: overwrite app.html ONLY. Never edit the <script> blocks in this file. -->
+<iframe
+  title="Orchestrator"
+  style="position:fixed;inset:0;width:100%;height:100%;border:0;margin:0;"
+  src="app.html"></iframe>
+
+<!-- ===== ANALYTICS · PostHog · PORTAL PAGE =======================================
+     Served at /portal/. Same gate and same access codes as the root page; the
+     analytics is adapted because the portal app exposes DIFFERENT hooks.
+
+     app.html is a generated ~13 MB bundle that gets replaced wholesale on every
+     deploy, so anything instrumented inside it dies at the next rebuild. index.html
+     and app.html are same-origin, so this file instruments the iframe from outside
+     and app.html never has to change. The deploy rule is unaffected: to ship a new
+     build, still overwrite app.html ONLY.
+
+     This is a NEW <script> block. The gate's own <script> blocks are untouched, and
+     nothing here reads the access code — unlock is detected from the gate's own
+     class change, not from the input field. Autocapture, session replay and surveys
+     are all off; only the named events below are ever sent.
+
+     ⛔ The portal bundle has NO data-step / data-lb attributes. Do not paste the
+        root page's analytics here — app_ready would never fire and would look
+        exactly like a broken deploy. The portal exposes data-ux-region,
+        data-ux-region and aria-current="page" instead (data-screen-label is a
+        decoy — it holds the persona and never updates).
+
+     Events: $pageview · gate_unlocked · gate_failed · portal_ready · portal_load_error
+             portal_screen_viewed · portal_action
+     Every event carries portal_build and page='portal', plus customer — from the
+     access code entered at the gate, or a ?c= tagged link as a fallback.
+================================================================================== -->
+<script>
+!function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}p||((p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",p.onerror=function(){p=null},(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r));var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="an ln init xn Cn Br kn In capture Fn nn calculateEventProperties On register register_once register_for_session unregister unregister_for_session Ln getFeatureFlag getFeatureFlagPayload getFeatureFlagResult getAllFeatureFlags isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync Dn identify setPersonProperties unsetPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset shutdown setIdentity clearIdentity get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException addExceptionStep captureLog startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty An Rn createPersonProfile setInternalOrTestUser $n yn jn opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing Tn debug Ur Rt getPageViewId captureTraceFeedback captureTraceMetric pn".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+
+(function () {
+  // Bump when you ship a new portal/app.html.
+  var PORTAL_BUILD = 'Portal V1';
+
+  posthog.init('phc_sLTNGMWhiCE7KgjETcV3TT2aHYvqGaPUXtCgBAzuVc3f', {
+    api_host: 'https://us.i.posthog.com',
+    defaults: '2026-05-30',
+    person_profiles: 'identified_only',
+    autocapture: false,            // we send named events instead
+    capture_pageview: false,       // fired manually below, once the customer tag is set
+    capture_pageleave: true,       // defaults to following capture_pageview, so set it explicitly
+    disable_session_recording: true,
+    disable_surveys: true
+  });
+  // page='portal' keeps this traffic separable from the root page in every query.
+  posthog.register({ portal_build: PORTAL_BUILD, page: 'portal' });
+
+  // ---- Visitor tagging ----
+  // Hand each customer their own link:  https://orc.speakbenefits.com/portal/?c=acme-health
+  // The tag is stored as a super property, so it rides on EVERY later event and
+  // sticks for that browser even if they come back without the parameter.
+  // Use account/company slugs only — never an individual's name or email.
+  function customerTag() {
+    try {
+      var v = new URLSearchParams(location.search).get('c');
+      if (!v) return null;
+      // Collapse anything not alphanumeric to a single dash, so "Acme Health Inc"
+      // and "acme-health-inc" land on the same tag rather than two near-identical ones.
+      v = v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
+      return v || null;
+    } catch (e) { return null; }
+  }
+  var tag = customerTag();
+  // Only register when the parameter is present, so a later bare visit doesn't
+  // wipe a tag this browser already carries.
+  if (tag) posthog.register({ customer: tag });
+  posthog.capture('$pageview');
+
+  var t0 = Date.now();
+  function cap(name, props) { try { posthog.capture(name, props || {}); } catch (e) {} }
+
+
+  // ---- Gate. Success is read from the gate's own class change. The access code
+  //      itself is NEVER read or sent — the gate publishes only the account LABEL
+  //      it matched, and failed attempts are counted without capturing what was
+  //      typed (a mistyped code could be anything). ----
+  var root = document.documentElement;
+  new MutationObserver(function (m, obs) {
+    if (root.classList.contains('__orc_locked')) return;
+    obs.disconnect();
+    var who = window.__orc_customer || null;
+    if (who && who !== 'shared') {
+      posthog.register({ customer: who });          // a named account beats a URL tag
+    } else if (who === 'shared') {
+      // The legacy shared code must not overwrite a specific tag this browser
+      // already carries, or a tagged visitor would collapse into "shared".
+      var existing = null;
+      try { existing = posthog.persistence.properties().customer; } catch (e) {}
+      if (!existing) posthog.register({ customer: 'shared' });
+    }
+    cap('gate_unlocked', { via: who === 'shared' ? 'shared' : (who ? 'code' : 'unknown') });
+  }).observe(root, { attributes: true, attributeFilter: ['class'] });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var err = document.getElementById('__orc_err');
+    if (!err) return;
+    new MutationObserver(function () {
+      if ((err.textContent || '').trim()) cap('gate_failed');
+    }).observe(err, { childList: true, characterData: true, subtree: true });
+  });
+
+  // ---- The portal, instrumented from outside the iframe. ----
+  var frame = document.querySelector('iframe[src="app.html"]');
+  var lastScreen = null, readyFired = false, errFired = false;
+
+  // The portal has no data-step. Its rendered regions are the reliable signal
+  // that the bundle unpacked and drew something.
+  function portalReady(d) { return !!d.querySelector('[data-ux-region]'); }
+
+  // NOTE: data-screen-label looks like the obvious hook but is NOT — it sits on
+  // <main>, holds the persona ("Operations · Control center"), and is never
+  // updated on navigation. The nav's aria-current="page" is the real signal and
+  // the app maintains it correctly. Verified 2026-08-24.
+  function currentScreen(d) {
+    var el = d.querySelector('[aria-current="page"]');
+    if (!el) return null;
+    var v = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (!v) return null;
+    // Nav items carry a trailing badge count ("Control center 8"). Strip it, or
+    // one screen splits into a new value every time the badge changes.
+    v = v.replace(/\s+\d+$/, '');
+    return v.slice(0, 80);
+  }
+
+  function onFrameClick(ev) {
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    var a = t.closest('[data-action-level]');
+    if (!a) return;
+    var region = a.closest('[data-ux-region]');
+    cap('portal_action', {
+      level: a.getAttribute('data-action-level') || '',
+      region: region ? (region.getAttribute('data-ux-region') || '') : '',
+      screen: lastScreen || ''
+    });
+  }
+
+  function wireFrame() {
+    var d;
+    try { d = frame && frame.contentDocument; } catch (e) { return; }   // guard: non-same-origin
+    if (!d || !d.body) return;
+    if (!d.__orcPH) { d.__orcPH = 1; d.addEventListener('click', onFrameClick, true); }
+    if (!readyFired && portalReady(d)) {
+      readyFired = true;
+      lastScreen = currentScreen(d);
+      cap('portal_ready', { ms: Date.now() - t0 });
+      if (lastScreen) cap('portal_screen_viewed', { screen: lastScreen });
+    } else if (readyFired && portalReady(d)) {
+      // Polled, not click-driven: navigation re-renders asynchronously and a
+      // click-triggered check races it, dropping the screen change for good.
+      var s = currentScreen(d);
+      if (s && s !== lastScreen) { cap('portal_screen_viewed', { screen: s }); lastScreen = s; }
+    }
+    if (!errFired && d.getElementById('__bundler_err')) { errFired = true; cap('portal_load_error'); }
+  }
+
+  if (frame) {
+    frame.addEventListener('load', wireFrame);
+    wireFrame();
+    // The bundler can swap the frame document, so re-wiring stays live. Idempotent.
+    setInterval(wireFrame, 800);
+  }
+})();
+</script>
+<!-- ===== END CONTENT ===== -->
+<script>
+(function(){
+  // Convenience gate on a static preview page. NOT a security control:
+  // the code below is readable in page source, and app.html is directly
+  // fetchable, so anyone who wants past this will get past it.
+  //
+  // NO AUTO-EXPIRY, deliberately. The sales-demo gate this is copied from
+  // carries REMOVE_BY=2026-08-01 and silently began refusing everyone after
+  // that date. A timer that locks out the audience without telling the owner
+  // is worse than no timer. If this page needs a hard end date, delete the
+  // repo or unpublish Pages — both are visible actions.
+  // ── ACCESS CODES ─────────────────────────────────────────────────────────
+  // One line per account.  code : "Account label shown in PostHog"
+  //
+  // The code deliberately does NOT name the customer, so page source reveals a
+  // list of arbitrary words rather than your prospect list. The label is what
+  // you see in analytics and never has to match the code.
+  //
+  // Codes are matched case- and punctuation-insensitively, so "Lakeshore",
+  // "LAKESHORE" and "lake-shore" all work. Keep keys lowercase a-z0-9 only.
+  //
+  // ⛔ DUPLICATED TABLE. Must stay identical to the CODES table in /index.html —
+  //    static hosting has no includes, so there is no shared source. Add or remove
+  //    an account code in BOTH files, or the two pages disagree about who gets in.
+  var CODES={
+    "idp123":"shared",          // legacy shared code — still live; retire once
+                                // "shared" traffic drops off in PostHog
+
+    // ── Assigned accounts ──────────────────────────────────────────────────
+    // Left = the code you give the customer. Right = the label you see in
+    // PostHog. Replace "unassigned" labels with the real account name.
+    //
+    // ⚠ Rename a label BEFORE the code is in wide use. Changing it later splits
+    //   that account's history — old events keep the old label, new ones get the
+    //   new one, and PostHog will show them as two separate accounts.
+    "meridian":"meridian",      // unassigned
+    "ironwood":"ironwood",      // unassigned
+    "calloway":"calloway",      // unassigned
+    "harborview":"harborview",    // unassigned
+    "stonebridge":"stonebridge",   // unassigned
+    "fairhaven":"fairhaven",     // unassigned
+    "windrow":"windrow",       // unassigned
+    "kestrel":"kestrel",       // unassigned
+    "alderman":"alderman",      // unassigned
+    "brightwater":"brightwater",   // unassigned
+    // Spare words if you need more: lakeshore, cedarpoint, marbury, oakhurst.
+  };
+  function normCode(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+  function unlock(){
+    var v=normCode(document.getElementById('__orc_pw').value);
+    // hasOwnProperty guard: without it, typing "constructor" or "toString"
+    // would hit Object.prototype and unlock the page.
+    var who=Object.prototype.hasOwnProperty.call(CODES,v)?CODES[v]:null;
+    if(who){
+      window.__orc_customer=who;   // read by the analytics block above
+      var g=document.getElementById('__orc_gate'); if(g) g.remove();
+      document.documentElement.classList.remove('__orc_locked');
+      document.body.classList.remove('__orc_locked');
+    } else {
+      document.getElementById('__orc_err').textContent='Incorrect code';
+    }
+  }
+  function wire(){
+    var b=document.getElementById('__orc_btn'),i=document.getElementById('__orc_pw');
+    if(b) b.addEventListener('click',unlock);
+    if(i) i.addEventListener('keydown',function(e){if(e.key==='Enter')unlock();});
+  }
+  if(document.readyState!=='loading') wire(); else document.addEventListener('DOMContentLoaded',wire);
+})();
+</script>

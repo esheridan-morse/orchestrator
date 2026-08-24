@@ -45,7 +45,10 @@
 
 (function () {
   // Bump when you ship a new app.html, so events say which build was viewed.
-  var ORC_BUILD = 'V7';
+  // NOTE: Fitz shipped two different files both called "V7" (2026-08-18 and
+  // 2026-08-24). They are labelled V7 and V7.1 here so the analytics can tell
+  // them apart; do not collapse them back to one label.
+  var ORC_BUILD = 'V7.1';
 
   posthog.init('phc_sLTNGMWhiCE7KgjETcV3TT2aHYvqGaPUXtCgBAzuVc3f', {
     api_host: 'https://us.i.posthog.com',
